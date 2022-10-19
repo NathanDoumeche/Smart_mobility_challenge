@@ -74,9 +74,9 @@ def filter_by_date(data_station, data_area, data_global, above_date_limit=True):
     date_limit = datetime.datetime.strptime(DATE_LIMIT_VALIDATION, "%Y-%m-%d %H:%M:%S")
     datasets = (data_station, data_area, data_global)
     if above_date_limit:
-        return tuple([data[data.date > date_limit].reset_index() for data in datasets])
+        return tuple([data[data.date >= date_limit].reset_index(drop=True) for data in datasets])
     else:
-        return tuple([data[data.date <= date_limit].reset_index() for data in datasets])
+        return tuple([data[data.date < date_limit].reset_index(drop=True) for data in datasets])
 
 
 def format_validation_filtered(validation_station, validation_area, validation_global, targets):
@@ -89,6 +89,7 @@ if __name__ == "__main__":
 
     train_station_raw = import_data("train")
     train_station = format_data(train_station_raw)
+
     train_area, train_global = generate_area_and_global(train_station)
 
     if EXPORT:
@@ -107,10 +108,10 @@ if __name__ == "__main__":
 
         train_station, train_area, train_global = filter_by_date(train_station, train_area,
                                                                  train_global, above_date_limit=False)
-        model = Mean(validation_station_filtered, validation_area_filtered, validation_global_filtered)
+
+        model = Mean(train_station, train_area, train_global)
         model.train()
-        prediction_station, prediction_area, prediction_global = model.predict(validation_station, validation_area,
-                                                                               validation_global)
+        prediction_station, prediction_area, prediction_global = model.predict(validation_station_filtered, validation_area_filtered, validation_global_filtered)
         metric = overall_metric(validation_station, validation_area, validation_global, prediction_station, prediction_area,
                        prediction_global)
 

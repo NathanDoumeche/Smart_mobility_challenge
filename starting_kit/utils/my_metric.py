@@ -16,8 +16,6 @@ def overall_metric(validation_station, validation_area, validation_global, predi
 
     ### Number of timesteps in the test set
     N = len(validation_global)
-    print("N")
-    print(N)
 
     ### Initiating scores list
     scores = []
@@ -37,7 +35,6 @@ def overall_metric(validation_station, validation_area, validation_global, predi
     prediction_global = prediction_global.loc[prediction_global['date'].isin(filter_dates['date'])].sort_values(by = 'date', ascending=True).reset_index(drop=True)
     prediction_area = prediction_area.loc[prediction_area['date'].isin(filter_dates['date'])].sort_values(by = 'date', ascending=True).reset_index(drop=True)
     prediction_station = prediction_station.loc[prediction_station['date'].isin(filter_dates['date'])].sort_values(by = 'date', ascending=True).reset_index(drop=True)
-    print(validation_global.head().to_string())
     for target in targets:
         scores.append( (sae(validation_global[target],prediction_global[target]) +
                         sae(validation_area[target],prediction_area[target]) +

@@ -27,4 +27,7 @@ class Mean:
         prediction_global = pd.merge(
             test_global, self.global_model, on=['tod', 'dow'])
 
+        #print(prediction_global[prediction_global['trend']<=17504].head().to_string())
+
+
         return prediction_station, prediction_area, prediction_global

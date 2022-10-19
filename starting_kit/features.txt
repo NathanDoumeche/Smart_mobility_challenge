@@ -1,0 +1,9 @@
+#### 2. Target Analysis ####
+
+print("Step 2/4: Target Analysis")
+
+station_features = ['Station', 'tod', 'dow', 'area'] + \
+    ['trend', 'Latitude', 'Longitude']  # temporal and spatial inputs
+area_features = ['area', 'tod', 'dow'] + ['trend',
+                                          'Latitude', 'Longitude']  # temporal and spatial inputs
+global_features = ['tod', 'dow'] + ['trend']  # temporal input

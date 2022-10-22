@@ -108,12 +108,14 @@ if __name__ == "__main__":
 
         train_station, train_area, train_global = filter_by_date(train_station, train_area,
                                                                  train_global, above_date_limit=False)
-
         model = Mean(train_station, train_area, train_global)
         model.train()
-        prediction_station, prediction_area, prediction_global = model.predict(validation_station_filtered, validation_area_filtered, validation_global_filtered)
-        metric = overall_metric(validation_station, validation_area, validation_global, prediction_station, prediction_area,
-                       prediction_global)
+        prediction_station, prediction_area, prediction_global = model.predict(validation_station_filtered,
+                                                                               validation_area_filtered,
+                                                                               validation_global_filtered)
+        metric = overall_metric(validation_station, validation_area, validation_global, prediction_station,
+                                prediction_area,
+                                prediction_global)
 
         print("The metric is: " + str(metric))
 

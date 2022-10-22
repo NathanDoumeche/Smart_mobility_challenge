@@ -28,13 +28,13 @@ def overall_metric(validation_station, validation_area, validation_global, predi
     prediction_area['date'] = pd.to_datetime(prediction_area['date'])
     prediction_station['date'] = pd.to_datetime(prediction_station['date'])
 
-    validation_global = validation_global.loc[validation_global['date'].isin(filter_dates['date'])].sort_values(by = 'date', ascending=True).reset_index(drop=True)
-    validation_area = validation_area.loc[validation_area['date'].isin(filter_dates['date'])].sort_values(by = 'date', ascending=True).reset_index(drop=True)
-    validation_station = validation_station.loc[validation_station['date'].isin(filter_dates['date'])].sort_values(by = 'date', ascending=True).reset_index(drop=True)
+    validation_global = validation_global.sort_values(by = 'trend').reset_index(drop=True)
+    validation_area = validation_area.sort_values(by = ['trend', 'area']).reset_index(drop=True)
+    validation_station = validation_station.sort_values(by = ['trend', 'Station']).reset_index(drop=True)
 
-    prediction_global = prediction_global.loc[prediction_global['date'].isin(filter_dates['date'])].sort_values(by = 'date', ascending=True).reset_index(drop=True)
-    prediction_area = prediction_area.loc[prediction_area['date'].isin(filter_dates['date'])].sort_values(by = 'date', ascending=True).reset_index(drop=True)
-    prediction_station = prediction_station.loc[prediction_station['date'].isin(filter_dates['date'])].sort_values(by = 'date', ascending=True).reset_index(drop=True)
+    prediction_global = prediction_global.sort_values(by = 'trend').reset_index(drop=True)
+    prediction_area = prediction_area.sort_values(by = ['trend', 'area']).reset_index(drop=True)
+    prediction_station = prediction_station.sort_values(by = ['trend', 'Station']).reset_index(drop=True)
     for target in targets:
         scores.append( (sae(validation_global[target],prediction_global[target]) +
                         sae(validation_area[target],prediction_area[target]) +

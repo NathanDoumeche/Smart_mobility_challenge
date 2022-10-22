@@ -1,32 +1,32 @@
 import pandas as pd
 
 class Mean:
-    def __init__(self, train_station, train_area, train_global):
-        self.train_station = train_station
-        self.train_area = train_area
-        self.train_global = train_global
-        self.station_model = None
-        self.area_model = None
-        self.global_model = None
+    def __init__(self, train_data, type):
+        self.train_data = train_data
+        self.model = None
+        self.type = type
 
     def train(self):
-        self.station_model = self.train_station.drop(["date", "trend", "Latitude", "Longitude"], axis=1).groupby(
-            ['Station', 'tod', 'dow']).mean().round().reset_index()
+        if self.type == "station":
+            columns_to_drop = ["date", "trend", "Latitude", "Longitude"]
+            columns_to_group_by = ['Station', 'tod', 'dow']
+        if self.type == "area":
+            columns_to_drop = ["date", "trend", "Latitude", "Longitude"]
+            columns_to_group_by = ['area', 'tod', 'dow']
+        if self.type == "global":
+            columns_to_drop = ["date", "trend"]
+            columns_to_group_by = ['tod', 'dow']
 
-        self.area_model = self.train_area.drop(["date", "trend", "Latitude", "Longitude"], axis=1).groupby(
-            ['area', 'tod', 'dow']).mean().round().reset_index()
+        self.model = self.train_data.drop(columns_to_drop, axis=1).groupby(
+            columns_to_group_by).mean().round().reset_index()
 
-        self.global_model = self.train_global.drop(["date", "trend"], axis=1).groupby(
-            ['tod', 'dow']).mean().round().reset_index()
+    def predict(self, test_data):
+        if self.type == "station":
+            columns_to_merge_on = ['Station', 'tod', 'dow']
+        if self.type == "area":
+            columns_to_merge_on = ['area', 'tod', 'dow']
+        if self.type == "global":
+            columns_to_merge_on = ['tod', 'dow']
+        prediction = pd.merge(test_data, self.model, on=columns_to_merge_on)
 
-    def predict(self, test_station, test_area, test_global):
-        prediction_station = pd.merge(test_station, self.station_model, on=[
-            'Station', 'tod', 'dow'])
-        prediction_area = pd.merge(test_area, self.area_model, on=[
-            'area', 'tod', 'dow'])
-        prediction_global = pd.merge(
-            test_global, self.global_model, on=['tod', 'dow'])
-
-
-
-        return prediction_station, prediction_area, prediction_global
+        return prediction

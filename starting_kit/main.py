@@ -93,12 +93,27 @@ if __name__ == "__main__":
     train_area, train_global = generate_area_and_global(train_station)
 
     if EXPORT:
-        model = Mean(train_station, train_area, train_global)
-        model.train()
+        # Instantiate the models
+        model_station = Mean(train_station, type = "station")
+        model_area = Mean(train_area, type = "area")
+        model_global = Mean(train_global, type = "global")
+
+        # Train the models
+        model_station.train()
+        model_area.train()
+        model_global.train()
+
+        # Import and process test dataset
         test_station_raw = import_data("test")
         test_station = format_data(test_station_raw)
         test_area, test_global = generate_area_and_global(test_station, is_test=True)
-        prediction_station, prediction_area, prediction_global = model.predict(test_station, test_area, test_global)
+
+        # Run predictions on test dataset
+        prediction_station = model_station.predict(test_station)
+        prediction_area = model_area.predict(test_area)
+        prediction_global = model_global.predict(test_global)
+
+        # Format predictions before submitting it
         submit_submission(prediction_station, prediction_area, prediction_global, targets)
     else:
         validation_station, validation_area, validation_global = filter_by_date(train_station, train_area,
@@ -108,11 +123,21 @@ if __name__ == "__main__":
 
         train_station, train_area, train_global = filter_by_date(train_station, train_area,
                                                                  train_global, above_date_limit=False)
-        model = Mean(train_station, train_area, train_global)
-        model.train()
-        prediction_station, prediction_area, prediction_global = model.predict(validation_station_filtered,
-                                                                               validation_area_filtered,
-                                                                               validation_global_filtered)
+        # Instantiate the models
+        model_station = Mean(train_station, type="station")
+        model_area = Mean(train_area, type="area")
+        model_global = Mean(train_global, type="global")
+
+        # Train the models
+        model_station.train()
+        model_area.train()
+        model_global.train()
+
+        # Run predictions on test dataset
+        prediction_station = model_station.predict(validation_station_filtered)
+        prediction_area = model_area.predict(validation_area_filtered)
+        prediction_global = model_global.predict(validation_global_filtered)
+
         metric = overall_metric(validation_station, validation_area, validation_global, prediction_station,
                                 prediction_area,
                                 prediction_global)

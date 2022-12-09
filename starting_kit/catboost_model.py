@@ -26,7 +26,7 @@ class RmseObjective(object):
 
 class Catboost_Model:
     def __init__(self, train_data, level_col, test, features,
-                 cat_features, targets, learning_rate=0.2, iterations=400, depth=5, classif=False, loss_function=RmseObjective(), eval_metric="Logloss"):
+                 cat_features, targets, learning_rate=0.01, iterations=300, depth=5, classif = False):
         self.train_data = train_data
         self.model = None
         self.level_col = level_col
@@ -38,8 +38,6 @@ class Catboost_Model:
         self.classif = classif
         self.depth = depth
         self.iterations = iterations
-        self.loss_function = loss_function
-        self.eval_metric = eval_metric
 
     def train(self):
         """
@@ -87,16 +85,15 @@ class Catboost_Model:
                 clf = CatBoostClassifier(iterations=self.iterations,
                                          learning_rate=self.learning_rate,
                                          depth=self.depth,
-                                         loss_function="MultiClass",
-                                         )
+                                         loss_function="MultiClass")
                 clf.fit(train_dataset, eval_set=valid_dataset)
             else:
                 clf = CatBoostRegressor(iterations=self.iterations,
                                         learning_rate=self.learning_rate,
                                         depth=self.depth,
-                                        loss_function=self.loss_function,
-                                        eval_metric=self.eval_metric,verbose=None,thread_count=12)
-                clf.fit(train_dataset, eval_set=valid_dataset, verbose=None)  # , sample_weight=weights)
+                                        loss_function=RmseObjective(),
+                                        eval_metric="MAE")
+                clf.fit(train_dataset, eval_set=valid_dataset)  # , sample_weight=weights)
             models.append(clf)
             self.model = models
 

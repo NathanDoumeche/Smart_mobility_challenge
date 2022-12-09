@@ -1,12 +1,12 @@
 import pandas as pd
 
-from starting_kit.catboost_model import Catboost_Model, RmseObjective
+from starting_kit.catboost_model import Catboost_Model
 from starting_kit.utils.my_metric import overall_metric
 from starting_kit.utils.submit_submission import submit_submission
 import datetime
 import os
 from pathlib import Path
-from multiprocessing import Pool
+
 from starting_kit.mean import Mean
 
 # Constants
@@ -32,20 +32,20 @@ def format_data(station_raw):
 
 def generate_area_and_global(data, is_test=False):
     if is_test:
-        area_data = data.groupby(['date', 'area']).agg({
+        area_data = test_station.groupby(['date', 'area']).agg({
             'tod': 'max',
             'dow': 'max',
             'Latitude': 'mean',
             'Longitude': 'mean',
             'trend': 'max'}).reset_index()
 
-        global_data = data.groupby('date').agg({
+        global_data = test_station.groupby('date').agg({
             'tod': 'max',
             'dow': 'max',
             'trend': 'max'}).reset_index()
 
     else:
-        area_data = data.groupby(['date', 'area']).agg({'Available': 'sum',
+        area_data = train_station.groupby(['date', 'area']).agg({'Available': 'sum',
                                                                  'Charging': 'sum',
                                                                  'Passive': 'sum',
                                                                  'Other': 'sum',
@@ -55,7 +55,7 @@ def generate_area_and_global(data, is_test=False):
                                                                  'Longitude': 'mean',
                                                                  'trend': 'max'}).reset_index()
 
-        global_data = data.groupby('date').agg({'Available': 'sum',
+        global_data = train_station.groupby('date').agg({'Available': 'sum',
                                                          'Charging': 'sum',
                                                          'Passive': 'sum',
                                                          'Other': 'sum',
@@ -86,223 +86,113 @@ def format_validation_filtered(validation_station, validation_area, validation_g
     return tuple([data.drop(targets, axis=1) for data in validation_datasets])
 
 
-def split_dataset(data_station, data_area, data_global, threshold, keep=False):
+def split_dataset(data_station, data_area, data_global, threshold):
     datasets = (data_station, data_area, data_global)
     validation_datasets = []
-    train_datasets = []
     for dataset in datasets:
         n = len(dataset)
         n_train = threshold * n
         validation_dataset = dataset.loc[n_train:n, ]
-        train_dataset = dataset.loc[:n_train, ]
         validation_datasets.append(validation_dataset)
-        train_datasets.append(train_dataset)
-    if keep:
-        return validation_datasets + [data_station, data_area, data_global]
-    else:
-        return validation_datasets + train_datasets
+    return validation_datasets
 
-
-
-
-
-
-def main(learning_rate=0.2,
-         iterations=400, depth=5, classif=False,
-         loss_function=RmseObjective(), eval_metric="Logloss"):
-    try:
-        targets = ["Available", "Charging", "Passive", "Other"]
-        station_features = ['Station', 'tod', 'dow', 'area'] + \
-                           ['trend', 'Latitude', 'Longitude']  # temporal and spatial inputs
-        area_features = ['area', 'tod', 'dow'] + ['trend',
-                                                  'Latitude', 'Longitude']  # temporal and spatial inputs
-        global_features = ['tod', 'dow'] + ['trend']  # temporal input
-
-        train_station_raw = import_data("train")
-        train_station = format_data(train_station_raw)
-
-        train_area, train_global = generate_area_and_global(train_station)
-
-        if EXPORT:
-            # Instantiate the models
-            # model_station = Mean(train_station, type="station")
-            # model_area = Mean(train_area, type="area")
-            # model_global = Mean(train_global, type="global")
-
-            validation_station, validation_area, validation_global, train_station, train_area, train_global = split_dataset(
-                train_station, train_area,
-                train_global, threshold=0.9, keep=True)
-
-            model_station = Catboost_Model(train_data=train_station,
-                                           test=validation_station,
-                                           features=station_features,
-                                           cat_features=[0, 1, 2, 3],
-                                           targets=targets,
-
-                                           level_col="Station",
-                                           learning_rate=0.2,
-                                           iterations=400, depth=5, classif=False,
-                                           loss_function="MAE", eval_metric="MAE")
-
-            model_area = Catboost_Model(train_data=train_area,
-                                        test=validation_area,
-                                        features=area_features,
-                                        cat_features=[0, 1, 2],
-                                        targets=targets,
-                                        level_col="area",                                       learning_rate=0.2,
-                                           iterations=400, depth=5, classif=False,
-                                           loss_function="MAPE", eval_metric="MAPE"
-                                        )
-
-            model_global = Catboost_Model(train_data=train_global,
-                                          test=validation_global,
-                                          features=global_features,
-                                          cat_features=[0, 1],
-                                          targets=targets,
-                                          level_col="global",
-                                          learning_rate=0.2,
-                                          iterations=400, depth=6, classif=False,
-                                          loss_function="MAPE", eval_metric="MAPE"
-                                          )
-
-            # Train the models
-            model_station.train()
-            model_area.train()
-            model_global.train()
-
-            # Import and process test dataset
-            test_station_raw = import_data("test")
-            test_station = format_data(test_station_raw)
-            test_area, test_global = generate_area_and_global(test_station, is_test=True)
-
-            # Run predictions on test dataset
-            prediction_station = model_station.predict(test_station)
-            prediction_area = model_area.predict(test_area)
-            prediction_global = model_global.predict(test_global)
-
-            # Format predictions before submitting it
-            submit_submission(prediction_station, prediction_area, prediction_global, targets)
-        else:
-            # validation_station, validation_area, validation_global = filter_by_date(train_station, train_area,
-            #                                                                         train_global, above_date_limit=True)
-            # validation_station_filtered, validation_area_filtered, validation_global_filtered = format_validation_filtered(
-            #     validation_station, validation_area, validation_global, targets)
-            #
-            # train_station, train_area, train_global = filter_by_date(train_station, train_area,
-            #                                                          train_global, above_date_limit=False)
-            # Instantiate the models
-            # model_station = Mean(train_station, type="station")
-            # model_area = Mean(train_area, type="area")
-            # model_global = Mean(train_global, type="global")
-
-            # train_station, train_area, train_global = filter_by_date(train_station, train_area,
-            #                                                          train_global, above_date_limit=False)
-
-            test_station, test_area, test_global, train_station, train_area, train_global = split_dataset(train_station,
-                                                                                                          train_area,
-                                                                                                          train_global,
-                                                                                                          threshold=0.9)
-
-            validation_station, validation_area, validation_global, train_station, train_area, train_global = split_dataset(
-                train_station, train_area,
-                train_global, threshold=0.9)
-
-            model_station = Catboost_Model(train_data=train_station,
-                                           test=validation_station,
-                                           features=station_features,
-                                           cat_features=[0, 1, 2, 3],
-                                           targets=targets,
-
-                                           level_col="Station",
-                                           learning_rate=learning_rate,
-                                           iterations=iterations, depth=depth, classif=classif,
-                                           loss_function=loss_function, eval_metric=eval_metric)
-
-            model_area = Catboost_Model(train_data=train_area,
-                                        test=validation_area,
-                                        features=area_features,
-                                        cat_features=[0, 1, 2],
-                                        targets=targets,
-                                        level_col="area",                                       learning_rate=learning_rate,
-                                           iterations=iterations, depth=depth, classif=classif,
-                                           loss_function=loss_function, eval_metric=eval_metric
-                                        )
-
-            model_global = Catboost_Model(train_data=train_global,
-                                          test=validation_global,
-                                          features=global_features,
-                                          cat_features=[0, 1],
-                                          targets=targets,
-                                          level_col="global",
-                                          learning_rate=learning_rate,
-                                          iterations=iterations, depth=depth, classif=classif,
-                                          loss_function=loss_function, eval_metric=eval_metric
-                                          )
-
-            model_station = Catboost_Model(train_data=train_station,
-                                           test=validation_station,
-                                           features=station_features,
-                                           cat_features=[0, 1, 2, 3],
-                                           targets=targets,
-
-                                           level_col="Station",
-                                           learning_rate=0.2,
-                                           iterations=400, depth=5, classif=False,
-                                           loss_function="MAE", eval_metric="MAE")
-
-            model_area = Catboost_Model(train_data=train_area,
-                                        test=validation_area,
-                                        features=area_features,
-                                        cat_features=[0, 1, 2],
-                                        targets=targets,
-                                        level_col="area",                                       learning_rate=0.2,
-                                           iterations=400, depth=5, classif=False,
-                                           loss_function="MAPE", eval_metric="MAPE"
-                                        )
-
-            model_global = Catboost_Model(train_data=train_global,
-                                          test=validation_global,
-                                          features=global_features,
-                                          cat_features=[0, 1],
-                                          targets=targets,
-                                          level_col="global",
-                                          learning_rate=0.2,
-                                          iterations=400, depth=6, classif=False,
-                                          loss_function="MAPE", eval_metric="MAPE"
-                                          )
-
-            # Train the models
-            model_station.train()
-            model_area.train()
-            model_global.train()
-
-            test_station_filtered, test_area_filtered, test_global_filtered = format_validation_filtered(
-                test_station, test_area, test_global, targets)
-
-            # Run predictions on test dataset
-            prediction_station = model_station.predict(test_station_filtered)
-            prediction_area = model_area.predict(test_area_filtered)
-            prediction_global = model_global.predict(test_global_filtered)
-
-            metric = overall_metric(test_station, test_area, test_global, prediction_station,
-                                    prediction_area,
-                                    prediction_global, learning_rate, iterations, depth, classif, loss_function, eval_metric)
-
-        print("Completed!")
-    except Exception as e:
-        print(learning_rate, iterations, depth, classif, loss_function, eval_metric)
-        print(e)
 
 if __name__ == "__main__":
+    targets = ["Available", "Charging", "Passive", "Other"]
+    station_features = ['Station', 'tod', 'dow', 'area'] + \
+                       ['trend', 'Latitude', 'Longitude']  # temporal and spatial inputs
+    area_features = ['area', 'tod', 'dow'] + ['trend',
+                                              'Latitude', 'Longitude']  # temporal and spatial inputs
+    global_features = ['tod', 'dow'] + ['trend']  # temporal input
 
-    # inputs = [
-    #     {"learning_rate":0.2,
-    #      "iterations":400, "depth":5, "classif":True,
-    #      "loss_function": "MAE", "eval_metric":"MAE"},
-    #     {"learning_rate": 0.2,
-    #      "iterations": 400, "depth": 5, "classif": True,
-    #      "loss_function": "MAPE", "eval_metric": "MAPE"},
-    # ]
-    # with Pool(processes=12) as pool:
-    #     result = pool.starmap(main, [ (i["learning_rate"], i["iterations"], i["depth"] ,i["classif"] ,i["loss_function"] ,i["eval_metric"]) for i in inputs])
-    main()
+    train_station_raw = import_data("train")
+    train_station = format_data(train_station_raw)
+
+    train_area, train_global = generate_area_and_global(train_station)
+
+    validation_station, validation_area, validation_global = split_dataset(train_station, train_area,
+                                                                           train_global, threshold=0.8)
+
+    model_station = Catboost_Model(train_data=train_station,
+                                   test=validation_station,
+                                   features=station_features,
+                                   cat_features=[0, 1, 2, 3],
+                                   targets=targets,
+                                   learning_rate=0.1,
+                                   level_col="Station")
+
+    model_area = Catboost_Model(train_data=train_area,
+                                test=validation_area,
+                                features=area_features,
+                                cat_features=[0, 1, 2],
+                                targets=targets,
+                                learning_rate=0.1,
+                                level_col="area")
+
+    model_global = Catboost_Model(train_data=train_global,
+                                  test=validation_global,
+                                  features=global_features,
+                                  cat_features=[0, 1],
+                                  targets=targets,
+                                  learning_rate=0.1,
+                                  level_col="global")
+
+    if EXPORT:
+        # Instantiate the models
+        # model_station = Mean(train_station, type="station")
+        # model_area = Mean(train_area, type="area")
+        # model_global = Mean(train_global, type="global")
+
+        # Train the models
+        model_station.train()
+        model_area.train()
+        model_global.train()
+
+        # Import and process test dataset
+        test_station_raw = import_data("test")
+        test_station = format_data(test_station_raw)
+        test_area, test_global = generate_area_and_global(test_station, is_test=True)
+
+        # Run predictions on test dataset
+        prediction_station = model_station.predict(test_station)
+        prediction_area = model_area.predict(test_area)
+        prediction_global = model_global.predict(test_global)
+
+        # Format predictions before submitting it
+        submit_submission(prediction_station, prediction_area, prediction_global, targets)
+    else:
+        # validation_station, validation_area, validation_global = filter_by_date(train_station, train_area,
+        #                                                                         train_global, above_date_limit=True)
+        # validation_station_filtered, validation_area_filtered, validation_global_filtered = format_validation_filtered(
+        #     validation_station, validation_area, validation_global, targets)
+        #
+        # train_station, train_area, train_global = filter_by_date(train_station, train_area,
+        #                                                          train_global, above_date_limit=False)
+        # Instantiate the models
+        # model_station = Mean(train_station, type="station")
+        # model_area = Mean(train_area, type="area")
+        # model_global = Mean(train_global, type="global")
+
+        # train_station, train_area, train_global = filter_by_date(train_station, train_area,
+        #                                                          train_global, above_date_limit=False)
+
+        # Train the models
+        model_station.train()
+        model_area.train()
+        model_global.train()
+
+        validation_station_filtered, validation_area_filtered, validation_global_filtered = format_validation_filtered(
+            validation_station, validation_area, validation_global, targets)
+
+        # Run predictions on test dataset
+        prediction_station = model_station.predict(validation_station_filtered)
+        prediction_area = model_area.predict(validation_area_filtered)
+        prediction_global = model_global.predict(validation_global_filtered)
+
+        metric = overall_metric(validation_station, validation_area, validation_global, prediction_station,
+                                prediction_area,
+                                prediction_global)
+
+        print("The metric is: " + str(metric))
+
+    print("Completed!")

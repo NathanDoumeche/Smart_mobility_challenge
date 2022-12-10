@@ -1,17 +1,17 @@
 import pandas as pd
 
-from starting_kit.catboost_model import Catboost_Model
-from starting_kit.utils.my_metric import overall_metric
-from starting_kit.utils.submit_submission import submit_submission
+from catboost_model import Catboost_Model
+from utils.my_metric import overall_metric
+from utils.submit_submission import submit_submission
 import datetime
 import os
 from pathlib import Path
 
-from starting_kit.mean import Mean
+from mean import Mean
 
 # Constants
 DATE_LIMIT_VALIDATION = "2021-01-01 00:00:00"
-EXPORT = False
+EXPORT = True
 INPUT_PATH = Path(__file__).resolve().parents[1] / "Data"
 
 
@@ -32,20 +32,20 @@ def format_data(station_raw):
 
 def generate_area_and_global(data, is_test=False):
     if is_test:
-        area_data = test_station.groupby(['date', 'area']).agg({
+        area_data = data.groupby(['date', 'area']).agg({
             'tod': 'max',
             'dow': 'max',
             'Latitude': 'mean',
             'Longitude': 'mean',
             'trend': 'max'}).reset_index()
 
-        global_data = test_station.groupby('date').agg({
+        global_data = data.groupby('date').agg({
             'tod': 'max',
             'dow': 'max',
             'trend': 'max'}).reset_index()
 
     else:
-        area_data = train_station.groupby(['date', 'area']).agg({'Available': 'sum',
+        area_data = data.groupby(['date', 'area']).agg({'Available': 'sum',
                                                                  'Charging': 'sum',
                                                                  'Passive': 'sum',
                                                                  'Other': 'sum',
@@ -55,7 +55,7 @@ def generate_area_and_global(data, is_test=False):
                                                                  'Longitude': 'mean',
                                                                  'trend': 'max'}).reset_index()
 
-        global_data = train_station.groupby('date').agg({'Available': 'sum',
+        global_data = data.groupby('date').agg({'Available': 'sum',
                                                          'Charging': 'sum',
                                                          'Passive': 'sum',
                                                          'Other': 'sum',

@@ -1,4 +1,5 @@
-Data/
 .idea/
-starting_kit/sample_result_submission.zip
-starting_kit/sample_result_submission/
+venv
+src/__pycache__
+src/utils/__pycache__
+catboost_info/

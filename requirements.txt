@@ -1,0 +1,7 @@
+catboost==1.1.1
+jupyter==1.0.0
+matplotlib==3.6.2
+numba==0.56.4
+numpy==1.21.0
+pandas==1.5.1
+seaborn==0.12.1
